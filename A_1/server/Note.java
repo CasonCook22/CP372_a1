@@ -1,3 +1,7 @@
+import java.util.HashSet;
+import java.util.Set;
+
+
 public class Note {
     private final int Note_x;
     private final int Note_y;
@@ -5,15 +9,18 @@ public class Note {
     private final int height;
     private final String content;
     private final String color;
+    
+    private final Set<Pin> pins;
 
 
-    public Note(int note_x, int note_y, int width, int height, String content, String color) {
+    public Note(int note_x, int note_y, int note_width, int note_height, String content, String color, Set<Pin> pins) {
         this.Note_x = note_x;
         this.Note_y = note_y;
-        this.width = width;
-        this.height = height;
+        this.width = note_width;
+        this.height = note_height;
         this.content = content;
         this.color = color;
+        this.pins = new HashSet<>();
     }
 
     public int getNote_x() {
@@ -35,6 +42,10 @@ public class Note {
 
     public boolean overlap(Note other) {
         return this.Note_x == other.Note_x && this.Note_y == other.Note_y && this.width == other.width && this.height == other.height;
+    }
+
+    public boolean ispinned() {
+        return !pins.isEmpty();
     }
     
 }
