@@ -183,7 +183,23 @@ public class ClientHandler extends Thread {
     }
     private void handleunpin(String args) {
         // Implementation for handling UNPIN command
+        String[] params = args.split(" ");
+        if (params.length < 2) {
+            out.println("ERROR Invalid UNPIN command format");
+            return;
+        }
 
+        try {
+            int x = Integer.parseInt(params[0]);
+            int y = Integer.parseInt(params[1]);
+
+            int unpinned = board.unpin(x, y);
+            out.println("UNPINNED: " + unpinned + " notes unpinned at (" + x + "," + y + ")");
+        } catch (NumberFormatException e) {
+            out.println("ERROR Invalid coordinates in UNPIN command");
+        } catch (IllegalArgumentException e) {
+            out.println("ERROR " + e.getMessage());
+        }
     }
 
     private void cleanup() {

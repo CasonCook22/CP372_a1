@@ -115,6 +115,16 @@ public class Board {
         return pinCount;
     }
 
+    public synchronized int unpin(int x, int y) {
+        int unpinnedCount = 0;
+        for (Note note : notes) {
+            if (note.getPins().removeIf(p -> p.getPin_x() == x && p.getPin_y() == y)) {
+                unpinnedCount++;
+            }
+        }
+        return unpinnedCount;
+    }
+
     public static void main(String[] args) {
         if (args.length < 6){
             System.err.println("Not enough arguments provided. Please use java ");
