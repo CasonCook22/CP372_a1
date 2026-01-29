@@ -35,7 +35,9 @@ public class ClientHandler extends Thread {
         in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
         out = new PrintWriter(clientSocket.getOutputStream(), true);
 
-        // Handshake protocol implementation goes here
+        String colors = String.join(",", board.getValidColors());
+        out.println("WELCOME " + board.getBoard_x() + " " + board.getBoard_y() + " " +
+                board.getNote_width() + " " + board.getNote_height() + " " + colors);
     }
 
     private void processCommands() throws IOException {

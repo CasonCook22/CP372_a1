@@ -23,13 +23,22 @@ public class Board {
         this.validColors = new HashSet<>(validColors);
     }
 
+    public Set<String> getValidColors() {
+        return validColors;
+    }
+
     public int getBoard_x() {
         return Board_x;
     }
     public int getBoard_y() {
         return Board_y;
     }
-
+    public int getNote_width() {
+        return note_width;
+    }
+    public int getNote_height() {
+        return note_height;
+    }
 
     public int clearboard() {
         int count = notes.size();
