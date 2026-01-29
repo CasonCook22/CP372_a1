@@ -13,6 +13,7 @@ public class Board {
     private final int note_height;
     private final List<Note> notes;
     private final Set<String> validColors;
+    
 
     public Board(int board_x, int board_y, int note_width, int note_height, List<Note> notes, Set<String> validColors) {
         this.Board_x = board_x;
@@ -57,6 +58,61 @@ public class Board {
         }
         notes.removeAll(toRemove);
         return removed;
+    }
+
+    public synchronized void addNote(Note note) {
+        if(!note.validbound(note.getNote_x(), note.getNote_y())){
+            throw new IllegalArgumentException("Note is out of board bounds");
+        }
+
+        if (!validColors.contains(note.getColor())) {
+            throw new IllegalArgumentException("Invalid note color: " + note.getColor());
+        }
+
+        for (Note existingNote : notes) {
+            if (note.overlap(existingNote)) {
+                throw new IllegalArgumentException("Note overlaps with an existing note");
+            }
+        }
+        notes.add(note);
+    }
+
+    public synchronized List<Note> getNotes(String color, Integer x, Integer y, String refersTo) {
+        List<Note> filteredNotes = new ArrayList<>();
+        for (Note note : notes) {
+            if (color != null && !note.getColor().equalsIgnoreCase(color)) {
+                continue;
+            }
+
+            if (x != null && y != null && !note.contains(x, y)) {
+                continue;
+            }
+
+            if (refersTo != null && !note.getContent().contains(refersTo)) {
+                continue;
+            }
+            filteredNotes.add(note);
+        }
+        return filteredNotes;
+    }
+
+    public synchronized List<Pin> getAllPins() {
+        List<Pin> pins = new ArrayList<>();
+        for (Note note : notes) {
+            pins.addAll(note.getPins());
+        }
+        return pins;
+    }
+
+    public synchronized int pin(Pin pin) {
+        int pinCount = 0;
+        for (Note note : notes) {
+            if (note.contains(pin.getPin_x(), pin.getPin_y())) {
+                note.getPins().add(pin);
+                pinCount++;
+            }
+        }
+        return pinCount;
     }
 
     public static void main(String[] args) {

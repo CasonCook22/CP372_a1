@@ -35,6 +35,12 @@ public class Note {
     public String getColor() {
         return color;
     }
+    public Set<Pin> getPins() {
+        return pins;
+    }
+    public boolean contains(int x, int y) {
+        return x >= Note_x && x < Note_x + width && y >= Note_y && y < Note_y + height;
+    }
 
     public boolean validbound(int Board_x, int Board_y) {
         return Note_x >= 0 && Note_y >= 0 && (Note_x + width) <= Board_x && (Note_y + height) <= Board_y;
@@ -43,6 +49,8 @@ public class Note {
     public boolean overlap(Note other) {
         return this.Note_x == other.Note_x && this.Note_y == other.Note_y && this.width == other.width && this.height == other.height;
     }
+
+
 
     public boolean ispinned() {
         return !pins.isEmpty();
