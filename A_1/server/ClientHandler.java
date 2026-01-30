@@ -77,7 +77,6 @@ public class ClientHandler extends Thread {
                     out.println("ERROR Unknown command: " + command);
                     continue;
             }
-            out.println(clientMessage.trim());
         }
     }
 
@@ -107,10 +106,6 @@ public class ClientHandler extends Thread {
         // Implementation for handling GET command
         args = args.trim();
 
-        if (args.isEmpty()) {
-            out.println("ERROR Invalid GET command format");
-            return;
-        }
         if (args.equalsIgnoreCase("PINS")) {
             List<Pin> allPins = board.getAllPins();
             if (allPins.isEmpty()) {

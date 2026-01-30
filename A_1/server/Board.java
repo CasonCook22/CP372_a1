@@ -41,7 +41,7 @@ public class Board {
         return note_height;
     }
 
-    public int clearboard() {
+    public synchronized int clearboard() {
         int count = notes.size();
         notes.clear();
         return count;
@@ -126,6 +126,7 @@ public class Board {
     }
 
     public static void main(String[] args) {
+        System.out.println("Starting Board server...");
         if (args.length < 6){
             System.err.println("Not enough arguments provided. Please use java ");
             System.exit(1);
@@ -161,7 +162,7 @@ public class Board {
                 Socket clientSocket = serverSocket.accept();
 
                 ClientHandler clientHandler = new ClientHandler(clientSocket, board);
-                new Thread(clientHandler).start();
+                clientHandler.start();
             }
         } catch (Exception e){
             System.err.println("Error starting server: " + e.getMessage());

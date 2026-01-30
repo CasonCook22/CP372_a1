@@ -14,4 +14,22 @@ public class Pin {
     public int getPin_y() {
         return pin_y;
     }
+
+    @Override   
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Pin pin = (Pin) o;
+
+        if (pin_x != pin.pin_x) return false;
+        return pin_y == pin.pin_y;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = pin_x;
+        result = 31 * result + pin_y;
+        return result;
+    }
 }

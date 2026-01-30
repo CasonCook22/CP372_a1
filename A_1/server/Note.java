@@ -49,9 +49,6 @@ public class Note {
     public boolean overlap(Note other) {
         return this.Note_x == other.Note_x && this.Note_y == other.Note_y && this.width == other.width && this.height == other.height;
     }
-
-
-
     public boolean ispinned() {
         return !pins.isEmpty();
     }
