@@ -42,8 +42,8 @@ public class Note {
         return x >= Note_x && x < Note_x + width && y >= Note_y && y < Note_y + height;
     }
 
-    public boolean validbound(int Board_x, int Board_y) {
-        return Note_x >= 0 && Note_y >= 0 && (Note_x + width) <= Board_x && (Note_y + height) <= Board_y;
+    public boolean validbound(int Board_width, int Board_height) {
+        return Note_x >= 0 && Note_y >= 0 && (Note_x + width) <= Board_width && (Note_y + height) <= Board_height;
     }
 
     public boolean overlap(Note other) {
