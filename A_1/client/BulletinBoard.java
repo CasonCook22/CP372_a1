@@ -1,11 +1,4 @@
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JInternalFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -16,9 +9,10 @@ public class BulletinBoard extends JFrame {
     private PrintWriter out;
     private BufferedReader in;
 
+    private JTextArea displayArea;
     private JInternalFrame boardFrame;
     private JTextField xField, yField, colorField, contentField;
-   private JButton postButton, getButton, pinButton, unpinButton, shakeButton, clearButton, disconnectButton;
+    private JButton postButton, getButton, pinButton, unpinButton, shakeButton, clearButton, disconnectButton, textClearButton;
 
     
     public BulletinBoard() {
@@ -40,7 +34,18 @@ public class BulletinBoard extends JFrame {
         }
 
         //GUI setup
+        displayArea = new JTextArea(10,40);
+        displayArea.setEditable(false);
+        
+        BoardPanel boardPanel = new BoardPanel();
+        boardPanel.setPreferredSize(new Dimension(600, 400));
 
+        // Create a center panel to hold both board and display area
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.add(boardPanel, BorderLayout.CENTER);
+        centerPanel.add(new JScrollPane(displayArea), BorderLayout.SOUTH);
+        
+        add(centerPanel, BorderLayout.CENTER);
         //INPUTS
         JPanel inputPanel = new JPanel(new GridLayout(5,2,5,5));
 
@@ -61,51 +66,70 @@ public class BulletinBoard extends JFrame {
         inputPanel.add(contentField);
 
         //BUTTONS
-        JPanel buttonPanel = new JPanel(new FlowLayout());
+        JPanel buttonPanel = new JPanel(new GridLayout(2, 4, 5, 5));
 
         postButton = new JButton("Post Note");
-        postButton.addActionListener(e -> handlePost());
+        postButton.addActionListener(e -> new Thread(this::handlePost).start());
         buttonPanel.add(postButton);
 
         getButton = new JButton("Get Notes");
-        getButton.addActionListener(e -> handleGet());
+        getButton.addActionListener(e -> new Thread(this::handleGet).start());
+
         buttonPanel.add(getButton);
 
         pinButton = new JButton("Pin Note");
-        pinButton.addActionListener(e -> handlePin());
+        pinButton.addActionListener(e -> new Thread(this::handlePin).start());
         buttonPanel.add(pinButton);
 
         unpinButton = new JButton("Unpin Note");
-        unpinButton.addActionListener(e -> handleUnpin());
+        unpinButton.addActionListener(e -> new Thread(this::handleUnpin).start());
         buttonPanel.add(unpinButton);
 
         shakeButton = new JButton("Shake Board");
-        shakeButton.addActionListener(e -> handleShake());
+        shakeButton.addActionListener(e -> new Thread(this::handleShake).start());
         buttonPanel.add(shakeButton);
 
         clearButton = new JButton("Clear Board");
-        clearButton.addActionListener(e -> handleClear());
+        clearButton.addActionListener(e -> new Thread(this::handleClear).start());
         buttonPanel.add(clearButton);
 
         disconnectButton = new JButton("Disconnect");
-        disconnectButton.addActionListener(e -> handleDisconnect());
+        disconnectButton.addActionListener(e -> new Thread(this::handleDisconnect).start());
         buttonPanel.add(disconnectButton);
+
+        textClearButton = new JButton("Clear Text");
+        textClearButton.addActionListener(e -> handleTextClear());
+        buttonPanel.add(textClearButton);
 
         add(inputPanel, BorderLayout.NORTH);
         add(buttonPanel, BorderLayout.SOUTH);
         
         setVisible(true);
+        initializeNotes();
+    }
+
+    private void initializeNotes(){
+        handleGet();
     }
 
     private void handleGet() {
         out.println("GET");
         try {
-            String response = in.readLine();
-            System.out.println("Server response: " + response);
+            String line;
+            while ((line = in.readLine()) != null && !line.equals("END")) {
+                String msg = line;
+                SwingUtilities.invokeLater(() ->
+                    displayArea.append(msg + "\n")
+                );
+            }
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage());
+            SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(this,
+                    "Error reading server response: " + e.getMessage())
+            );
         }
     }
+
 
     private void handlePin() {
         String x = xField.getText();
@@ -116,9 +140,13 @@ public class BulletinBoard extends JFrame {
 
         try {
             String response = in.readLine();
-            System.out.println("Server response: " + response);
+            SwingUtilities.invokeLater(() ->
+                displayArea.append("Server response: " + response + "\n")
+            );
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage());
+            SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage())
+            );
         }
     }
 
@@ -131,9 +159,13 @@ public class BulletinBoard extends JFrame {
 
         try {
             String response = in.readLine();
-            System.out.println("Server response: " + response);
+            SwingUtilities.invokeLater(() ->
+                displayArea.append("Server response: " + response + "\n")
+            );
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage());
+            SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage())
+            );
         }
     }
 
@@ -141,9 +173,13 @@ public class BulletinBoard extends JFrame {
         out.println("SHAKE");
         try {
             String response = in.readLine();
-            System.out.println("Server response: " + response);
+            SwingUtilities.invokeLater(() ->
+                displayArea.append("Server response: " + response + "\n")
+            );
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage());
+            SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage())
+            );
         }
     }
 
@@ -151,18 +187,33 @@ public class BulletinBoard extends JFrame {
         out.println("CLEAR");
         try {
             String response = in.readLine();
-            System.out.println("Server response: " + response);
+            SwingUtilities.invokeLater(() ->
+                displayArea.append("Server response: " + response + "\n")
+            );
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage());
+            SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage())
+            );
         }
+    }
+
+    private void handleTextClear() {
+        xField.setText("");
+        yField.setText("");
+        colorField.setText("");
+        contentField.setText("");
     }
 
     private void handleDisconnect() {
         try {
             socket.close();
-            JOptionPane.showMessageDialog(this, "Disconnected from server.");
+            SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(this, "Disconnected from server.")
+            );
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, " - Error disconnecting: " + e.getMessage());
+            SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(this, " - Error disconnecting: " + e.getMessage())
+            );
         }
     }
 
@@ -177,9 +228,13 @@ public class BulletinBoard extends JFrame {
 
         try {
             String response = in.readLine();
-            System.out.println("Server response: " + response);
+            SwingUtilities.invokeLater(() ->
+                displayArea.append("Server response: " + response + "\n")
+            );
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage());
+            SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(this, " - Error reading server response: " + e.getMessage())
+            );
         }
     }
 
