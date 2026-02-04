@@ -8,18 +8,41 @@ public class NetworkClient {
     private PrintWriter out;
     private BufferedReader in;
 
+    private int boardWidth;
+    private int boardHeight;
+    private int noteWidth;
+    private int noteHeight;
+    private String[] validColors;
+
     public void connect(String host, int port) throws IOException {
         socket = new Socket(host, port);
         out = new PrintWriter(socket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+        String welcome = readline();
+        parseWelcome(welcome);
     }
 
-    public String receiveLine() throws IOException {
+    public String readline() throws IOException {
         return in.readLine();
     }
 
-    public void sendLine(String line) {
+    public void sendline(String line) {
         out.println(line);
+    }
+
+    private void parseWelcome(String welcomeLine) {
+        // Example WELCOME line:
+        // WELCOME 600 400 100 100 yellow,pink,blue,green
+        String[] parts = welcomeLine.split(" ");
+        if (parts.length < 6 || !parts[0].equals("WELCOME")) {
+            throw new IllegalArgumentException("Invalid WELCOME message: " + welcomeLine);
+        }
+        boardWidth = Integer.parseInt(parts[1]);
+        boardHeight = Integer.parseInt(parts[2]);
+        noteWidth = Integer.parseInt(parts[3]);
+        noteHeight = Integer.parseInt(parts[4]);
+        validColors = parts[5].split(",");
     }
 
     /**
@@ -27,22 +50,44 @@ public class NetworkClient {
      * Blocks for the first response line; then gathers any immediately
      * available additional lines using in.ready() to avoid blocking.
      */
-    public List<String> sendAndReceive(String command) throws IOException {
+    public synchronized List<String> sendAndReceive(String command) throws IOException {
+        // Ensure only one request is in flight at a time to avoid interleaving
         out.println(command);
         List<String> responseLines = new ArrayList<>();
 
-        String line = in.readLine(); // block for first response
-        if (line == null) return responseLines;
-        responseLines.add(line);
-
-        // collect any immediately-available additional lines
-        while (in.ready()) {
-            line = in.readLine();
-            if (line == null) break;
+        String line;
+        while ((line = in.readLine()) != null) {
             responseLines.add(line);
+            System.out.println("[Client] read: " + line);
+
+            // break on explicit terminator or on known single-line responses
+            if ("END".equals(line) ||
+                line.startsWith("ERROR") ||
+                line.equals("NONOTES") ||
+                line.equals("NOPINS") ||
+                line.equals("POSTED") ||
+                line.startsWith("PINNED") ||
+                line.startsWith("UNPINNED") ||
+                line.startsWith("SHAKED") ||
+                line.startsWith("CLEARED") ||
+                line.startsWith("DISCONNECTED")) {
+                break;
+            }
         }
+
+        System.out.println("[Client] Command '" + command + "' got " + responseLines.size() + " lines");
         return responseLines;
     }
+
+    public boolean isConnected() {
+        return socket != null && socket.isConnected() && !socket.isClosed();
+    }
+
+    public int getBoardWidth() { return boardWidth; }
+    public int getBoardHeight() { return boardHeight; }
+    public int getNoteWidth() { return noteWidth; }
+    public int getNoteHeight() { return noteHeight; }
+    public String[] getValidColors() { return validColors; }
 
     public void disconnect() throws IOException {
         if (socket != null && !socket.isClosed()) socket.close();

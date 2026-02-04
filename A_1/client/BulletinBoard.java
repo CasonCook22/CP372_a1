@@ -1,5 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 //import java.awt.event.*;
 import java.io.*;
 
@@ -14,6 +16,10 @@ disconnect should close window or return to connection panel
 public class BulletinBoard extends JFrame {
     private NetworkClient client;
 
+    private CardLayout cardLayout;
+    private JPanel mainPanel;
+
+    private JPanel connectPanel;
 
     private JTextArea displayArea;
     //private JInternalFrame boardFrame;
@@ -21,43 +27,116 @@ public class BulletinBoard extends JFrame {
     private JButton postButton, getButton, pinButton, unpinButton, shakeButton, clearButton, disconnectButton, textClearButton;
 
     public BulletinBoard() {
-        setTitle("Bulletin Board");
+        super("Network Bulletin Board");
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
+
+        connectPanel = createConnectPanel();
+        mainPanel.add(connectPanel, "CONNECT");
+
+        add(mainPanel, BorderLayout.CENTER);
+
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setVisible(true);
+        setLocationRelativeTo(null);
 
-        setLayout(new BorderLayout());
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (client != null && client.isConnected()){
+                    try {
+                        client.disconnect();
+                    } catch (IOException ex) {
+                        // Log the error but allow the window to close
+                        System.err.println("Error disconnecting: " + ex.getMessage());
+                    }
+                }
+            }
+        });
+    }
 
-        //try to connect to server
-        try {
-            //make port modular, get input from a panel or text box?
-            //Need to create a connection pannel that starts first for ip and port input
-            client = new NetworkClient();
-            client.connect("localhost", 4554);
+    private JPanel createConnectPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
 
-            String welcome = client.receiveLine();
-            System.out.println("Server: " + welcome);
-            // parse welcome and configure board panel later after creation
-            // store welcome line in a field for initialize
-            this.welcomeLine = welcome;
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, " - Error connecting to server: " + e.getMessage());
-        }
+        JTextField hostField = new JTextField("", 15);
+        JTextField portField = new JTextField("", 15);
+        JButton connectButton = new JButton("Connect");
+        JLabel statusLabel = new JLabel(" ");
 
-        //GUI setup
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        gbc.gridx = 0; gbc.gridy = 0;
+        panel.add(new JLabel("Host:"), gbc);
+
+        gbc.gridx = 1;
+        panel.add(hostField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1;
+        panel.add(new JLabel("Port:"), gbc);
+
+        gbc.gridx = 1;
+        panel.add(portField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        panel.add(connectButton, gbc);
+
+        gbc.gridy = 3;
+        panel.add(statusLabel, gbc);
+
+        connectButton.addActionListener(e -> {
+            String host = hostField.getText().trim();
+            int port;
+
+            try {
+                port = Integer.parseInt(portField.getText().trim());
+            } catch (NumberFormatException ex) {
+                statusLabel.setText("Invalid port number");
+                return;
+            }
+            try {
+                client = new NetworkClient();
+                client.connect(host, port);
+                statusLabel.setText("Connected to " + host + ":" + port);
+
+                // Initialize the board UI on the EDT after successful handshake
+                SwingUtilities.invokeLater(() -> {
+                    initialize();
+                    cardLayout.show(mainPanel, "BOARD");
+                });
+
+            } catch (IOException ex) {
+                statusLabel.setText("Connection failed: " + ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                statusLabel.setText("Protocol error: " + ex.getMessage());
+            }
+        });
+
+        return panel;
+    }
+    public void initialize() {
+
+        // GUI setup
         displayArea = new JTextArea(10,40);
         displayArea.setEditable(false);
-        
-        BoardPanel boardPanel = new BoardPanel();
+
+        boardPanel = new BoardPanel();
         boardPanel.setPreferredSize(new Dimension(600, 400));
+
+        // Configure panel sizes from handshake (if available)
+        if (client != null && client.isConnected()) {
+            try {
+                boardPanel.setBoardSize(client.getBoardWidth(), client.getBoardHeight());
+                boardPanel.setNoteSize(client.getNoteWidth(), client.getNoteHeight());
+            } catch (Exception ignored) {}
+        }
 
         // Create a center panel to hold both board and display area
         JPanel centerPanel = new JPanel(new BorderLayout());
         centerPanel.add(boardPanel, BorderLayout.CENTER);
         centerPanel.add(new JScrollPane(displayArea), BorderLayout.SOUTH);
-        
-        add(centerPanel, BorderLayout.CENTER);
-        //INPUTS
+
+        // INPUTS
         JPanel inputPanel = new JPanel(new GridLayout(5,2,5,5));
 
         inputPanel.add(new JLabel("X:"));
@@ -76,7 +155,7 @@ public class BulletinBoard extends JFrame {
         contentField = new JTextField();
         inputPanel.add(contentField);
 
-        //BUTTONS
+        // BUTTONS
         JPanel buttonPanel = new JPanel(new GridLayout(2, 4, 5, 5));
 
         postButton = new JButton("Post Note");
@@ -85,7 +164,6 @@ public class BulletinBoard extends JFrame {
 
         getButton = new JButton("Get Notes");
         getButton.addActionListener(e -> new Thread(this::handleGet).start());
-
         buttonPanel.add(getButton);
 
         pinButton = new JButton("Pin Note");
@@ -112,20 +190,20 @@ public class BulletinBoard extends JFrame {
         textClearButton.addActionListener(e -> handleTextClear());
         buttonPanel.add(textClearButton);
 
-        add(inputPanel, BorderLayout.NORTH);
-        add(buttonPanel, BorderLayout.SOUTH);
-        
+        // assemble into a board container and add to the card layout
+        JPanel boardContainer = new JPanel(new BorderLayout());
+        boardContainer.add(centerPanel, BorderLayout.CENTER);
+        boardContainer.add(inputPanel, BorderLayout.NORTH);
+        boardContainer.add(buttonPanel, BorderLayout.SOUTH);
+
+        mainPanel.add(boardContainer, "BOARD");
+
         setVisible(true);
         // initialize board panel using welcome message and GET
-        if (this.welcomeLine != null) {
-            parseWelcomeToPanel(this.welcomeLine, boardPanel);
-        }
         this.boardPanel = boardPanel;
         initializeNotes();
     }
-
     // keep references
-    private String welcomeLine = null;
     private BoardPanel boardPanel;
 
     private void initializeNotes(){
@@ -135,7 +213,10 @@ public class BulletinBoard extends JFrame {
 
     private void handleGet() {
         try {
+            SwingUtilities.invokeLater(() -> displayArea.append("DEBUG: sending GET\n"));
             java.util.List<String> lines = client.sendAndReceive("GET");
+
+            SwingUtilities.invokeLater(() -> displayArea.append("DEBUG: received " + lines.size() + " lines\n"));
 
             // append server messages to display area
             for (String msg : lines) {
@@ -165,7 +246,7 @@ public class BulletinBoard extends JFrame {
         java.util.List<Point> pinList = new java.util.ArrayList<>();
 
         for (String l : lines) {
-            if (l == null || l.isEmpty()) continue;
+            if (l == null || l.isEmpty() || l.equals("END")) continue;
             if (l.startsWith("NOTE ")) {
                 // NOTE x y color content
                 String[] parts = l.split(" ", 5);
@@ -206,28 +287,13 @@ public class BulletinBoard extends JFrame {
         panel.setPins(pinList);
     }
 
-    private void parseWelcomeToPanel(String welcome, BoardPanel panel) {
-        if (welcome == null) return;
-        // WELCOME boardX boardY noteW noteH colors
-        if (!welcome.startsWith("WELCOME")) return;
-        String[] parts = welcome.split(" ", 6);
-        if (parts.length >= 5) {
-            try {
-                int boardX = Integer.parseInt(parts[1]);
-                int boardY = Integer.parseInt(parts[2]);
-                int noteW = Integer.parseInt(parts[3]);
-                int noteH = Integer.parseInt(parts[4]);
-                //color?
-                panel.setBoardSize(boardX, boardY);
-                panel.setNoteSize(noteW, noteH);
-            } catch (NumberFormatException ignored) {}
-        }
-    }
-
     private void refreshBoard(){
-        new Thread(this::handleGet).start();
+        // short delay to avoid racing the server immediately after a POST
+        new Thread(() -> {
+            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            handleGet();
+        }).start();
     }
-
 
     private void handlePin() {
         String x = xField.getText();
@@ -310,7 +376,8 @@ public class BulletinBoard extends JFrame {
                 JOptionPane.showMessageDialog(this, "Disconnected from server.");
             });
             client.disconnect();
-        } catch (IOException e) {
+        } catch (IOException e)
+         {
             SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(this, " - Error disconnecting: " + e.getMessage())
             );
@@ -330,6 +397,7 @@ public class BulletinBoard extends JFrame {
 
             SwingUtilities.invokeLater(() -> {
                 for (String r : response) displayArea.append(r + "\n");
+                displayArea.append("DEBUG: POST response received, refreshing board...\n");
             });
 
             if (!response.isEmpty() && response.get(0).startsWith("ERROR")) {
@@ -352,7 +420,9 @@ public class BulletinBoard extends JFrame {
     }
 
     public static void main(String[] args) {
-        new BulletinBoard();
+
+        BulletinBoard board = new BulletinBoard();
+        board.setVisible(true);
     }
     
 }
