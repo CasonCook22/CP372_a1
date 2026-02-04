@@ -212,12 +212,18 @@ public class BulletinBoard extends JFrame {
     }
 
     private void handleGet() {
+        String x = xField.getText();
+        String y = yField.getText();
+        String color = colorField.getText();
+        String content = contentField.getText();
+        String command = "GET";
+
+        if (!color.isEmpty()) command += " color=" + color;
+        if (!x.isEmpty() && !y.isEmpty()) command += " contains=" + x + " " + y;
+        if (!content.isEmpty()) command += " refersTo=" + content;
+    
         try {
-            SwingUtilities.invokeLater(() -> displayArea.append("DEBUG: sending GET\n"));
-            java.util.List<String> lines = client.sendAndReceive("GET");
-
-            SwingUtilities.invokeLater(() -> displayArea.append("DEBUG: received " + lines.size() + " lines\n"));
-
+            java.util.List<String> lines = client.sendAndReceive(command);
             // append server messages to display area
             for (String msg : lines) {
                 SwingUtilities.invokeLater(() -> displayArea.append(msg + "\n"));
