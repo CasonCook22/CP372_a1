@@ -133,6 +133,7 @@ public class ClientHandler extends Thread {
             );
 
             board.addNote(note);
+            System.out.println("[Server] NOTE ADDED: x=" + x + " y=" + y + " color=" + color + " content=" + content);
             out.println("POSTED");
 
         } catch (NumberFormatException e) {
@@ -162,6 +163,7 @@ public class ClientHandler extends Thread {
                 }
                 out.println(response.toString());
             }
+            out.println("END"); // terminator for multi-line GET response
             return;
         }
 
@@ -199,19 +201,20 @@ public class ClientHandler extends Thread {
 
         List<Note> results = board.getNotes(color, x, y, refersTo);
 
+        System.out.println("[Server] GET requested; returning " + results.size() + " notes");
+
         if (results.isEmpty()) {
-            out.println("NONOTES");
-        } else {
-            for (Note n : results) {
-                out.println(
-                    "NOTE " +
-                    n.getNote_x() + " " +
-                    n.getNote_y() + " " +
-                    n.getColor() + " " +
-                    n.getContent()
-                );
+                System.out.println("[Server->client] Sending: NONOTES");
+                out.println("NONOTES");
+            } else {
+                for (Note n : results) {
+                    String toSend = "NOTE " + n.getNote_x() + " " + n.getNote_y() + " " + n.getColor() + " " + n.getContent();
+                    System.out.println("[Server->client] Sending: " + toSend);
+                    out.println(toSend);
+                }
             }
-        }
+            System.out.println("[Server->client] Sending: END");
+            out.println("END"); // terminate the GET response
     }
 
     /**
