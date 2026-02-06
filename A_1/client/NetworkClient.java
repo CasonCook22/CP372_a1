@@ -50,33 +50,17 @@ public class NetworkClient {
      * Blocks for the first response line; then gathers any immediately
      * available additional lines using in.ready() to avoid blocking.
      */
-    public synchronized List<String> sendAndReceive(String command) throws IOException {
+    public synchronized String sendAndReceive(String command) throws IOException {
         // Ensure only one request is in flight at a time to avoid interleaving
         out.println(command);
-        List<String> responseLines = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
 
         String line;
         while ((line = in.readLine()) != null) {
-            responseLines.add(line);
+            sb.append(line + "\n");
             System.out.println("[Client] read: " + line);
-
-            // break on explicit terminator or on known single-line responses
-            if ("END".equals(line) ||
-                line.startsWith("ERROR") ||
-                line.equals("NONOTES") ||
-                line.equals("NOPINS") ||
-                line.equals("POSTED") ||
-                line.startsWith("PINNED") ||
-                line.startsWith("UNPINNED") ||
-                line.startsWith("SHAKED") ||
-                line.startsWith("CLEARED") ||
-                line.startsWith("DISCONNECTED")) {
-                break;
-            }
         }
-
-        System.out.println("[Client] Command '" + command + "' got " + responseLines.size() + " lines");
-        return responseLines;
+        return sb.toString();
     }
 
     public boolean isConnected() {

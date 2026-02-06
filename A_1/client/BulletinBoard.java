@@ -120,20 +120,8 @@ public class BulletinBoard extends JFrame {
         displayArea = new JTextArea(10,40);
         displayArea.setEditable(false);
 
-        boardPanel = new BoardPanel();
-        boardPanel.setPreferredSize(new Dimension(600, 400));
-
-        // Configure panel sizes from handshake (if available)
-        if (client != null && client.isConnected()) {
-            try {
-                boardPanel.setBoardSize(client.getBoardWidth(), client.getBoardHeight());
-                boardPanel.setNoteSize(client.getNoteWidth(), client.getNoteHeight());
-            } catch (Exception ignored) {}
-        }
-
         // Create a center panel to hold both board and display area
         JPanel centerPanel = new JPanel(new BorderLayout());
-        centerPanel.add(boardPanel, BorderLayout.CENTER);
         centerPanel.add(new JScrollPane(displayArea), BorderLayout.SOUTH);
 
         // INPUTS
@@ -200,16 +188,9 @@ public class BulletinBoard extends JFrame {
 
         setVisible(true);
         // initialize board panel using welcome message and GET
-        this.boardPanel = boardPanel;
-        initializeNotes();
     }
     // keep references
-    private BoardPanel boardPanel;
 
-    private void initializeNotes(){
-        // retrieve notes and pins from server and update panel
-        new Thread(this::handleGet).start();
-    }
 
     private void handleGet() {
         String x = xField.getText();
@@ -223,82 +204,15 @@ public class BulletinBoard extends JFrame {
         if (!content.isEmpty()) command += " refersTo=" + content;
     
         try {
-            java.util.List<String> lines = client.sendAndReceive(command);
+            String lines = client.sendAndReceive(command);
             // append server messages to display area
-            for (String msg : lines) {
-                SwingUtilities.invokeLater(() -> displayArea.append(msg + "\n"));
-            }
-
-            // parse notes & pins and update board panel
-            getNotesToDisplay(lines, boardPanel);
-
+            SwingUtilities.invokeLater(() -> displayArea.append(lines + "\n"));
         } catch (IOException e) {
             SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(this,
                     "Error communicating with server: " + e.getMessage())
             );
         }
-    }
-
-    /**
-     * Parse server GET/WELCOME lines and update the BoardPanel.
-     * Expects lines such as:
-     * - "WELCOME <boardX> <boardY> <noteW> <noteH> <colors...>"
-     * - "NOTE x y color content..."
-     * - "NONOTES" or "PINS x,y x,y..." / "NOPINS"
-     */
-    private void getNotesToDisplay(java.util.List<String> lines, BoardPanel panel) {
-        java.util.List<BoardPanel.NoteData> noteList = new java.util.ArrayList<>();
-        java.util.List<Point> pinList = new java.util.ArrayList<>();
-
-        for (String l : lines) {
-            if (l == null || l.isEmpty() || l.equals("END")) continue;
-            if (l.startsWith("NOTE ")) {
-                // NOTE x y color content
-                String[] parts = l.split(" ", 5);
-                if (parts.length >= 5) {
-                    try {
-                        int x = Integer.parseInt(parts[1]);
-                        int y = Integer.parseInt(parts[2]);
-                        String color = parts[3];
-                        String content = parts[4];
-                        int nw = panel.getNoteWidth();
-                        int nh = panel.getNoteHeight();
-                        noteList.add(new BoardPanel.NoteData(x, y, nw, nh, color, content));
-                    } catch (NumberFormatException ignored) { }
-                }
-            } else if (l.startsWith("PINS")) {
-                // PINS x,y x,y ...
-                String rest = l.substring(4).trim();
-                if (!rest.isEmpty()) {
-                    String[] coords = rest.split(" ");
-                    for (String c : coords) {
-                        String[] xy = c.split(",");
-                        if (xy.length == 2) {
-                            try {
-                                int px = Integer.parseInt(xy[0]);
-                                int py = Integer.parseInt(xy[1]);
-                                pinList.add(new Point(px, py));
-                            } catch (NumberFormatException ignored) {}
-                        }
-                    }
-                }
-            } else if (l.startsWith("NONOTES") || l.startsWith("NOPINS")) {
-                // nothing to add
-            }
-        }
-
-        // The server doesn't send note dimensions with GET responses, so don't override note size here.
-        panel.setNotes(noteList);
-        panel.setPins(pinList);
-    }
-
-    private void refreshBoard(){
-        // short delay to avoid racing the server immediately after a POST
-        new Thread(() -> {
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
-            handleGet();
-        }).start();
     }
 
     private void handlePin() {
@@ -308,11 +222,10 @@ public class BulletinBoard extends JFrame {
         String command = ("PIN " + x + " " + y);
 
         try {
-            java.util.List<String> response = client.sendAndReceive(command);
+            String response = client.sendAndReceive(command);
             SwingUtilities.invokeLater(() -> {
-                for (String r : response) displayArea.append("Server response: " + r + "\n");
+                displayArea.append("Server response: " + response + "\n");
             });
-            refreshBoard();
         } catch (IOException e) {
             SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(this, " - Error communicating with server: " + e.getMessage())
@@ -327,11 +240,10 @@ public class BulletinBoard extends JFrame {
         String command = ("UNPIN " + x + " " + y);
 
         try {
-            java.util.List<String> response = client.sendAndReceive(command);
+            String response = client.sendAndReceive(command);
             SwingUtilities.invokeLater(() -> {
-                for (String r : response) displayArea.append("Server response: " + r + "\n");
+                displayArea.append("Server response: " + response + "\n");
             });
-            refreshBoard();
         } catch (IOException e) {
             SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(this, " - Error communicating with server: " + e.getMessage())
@@ -341,11 +253,10 @@ public class BulletinBoard extends JFrame {
 
     private void handleShake() {
         try {
-            java.util.List<String> response = client.sendAndReceive("SHAKE");
+            String response = client.sendAndReceive("SHAKE");
             SwingUtilities.invokeLater(() -> {
-                for (String r : response) displayArea.append("Server response: " + r + "\n");
+                displayArea.append("Server response: " + response + "\n");
             });
-            refreshBoard();
         } catch (IOException e) {
             SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(this, " - Error communicating with server: " + e.getMessage())
@@ -355,11 +266,10 @@ public class BulletinBoard extends JFrame {
 
     private void handleClear() {
         try {
-            java.util.List<String> response = client.sendAndReceive("CLEAR");
+            String response = client.sendAndReceive("CLEAR");
             SwingUtilities.invokeLater(() -> {
-                for (String r : response) displayArea.append("Server response: " + r + "\n");
+                displayArea.append("Server response: " + response + "\n");
             });
-            refreshBoard();
         } catch (IOException e) {
             SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(this, " - Error communicating with server: " + e.getMessage())
@@ -376,9 +286,9 @@ public class BulletinBoard extends JFrame {
 
     private void handleDisconnect() {
         try {
-            java.util.List<String> response = client.sendAndReceive("DISCONNECT");
+            String response = client.sendAndReceive("DISCONNECT");
             SwingUtilities.invokeLater(() -> {
-                for (String r : response) displayArea.append(r + "\n");
+                displayArea.append(response + "\n");
                 JOptionPane.showMessageDialog(this, "Disconnected from server.");
             });
             client.disconnect();
@@ -399,19 +309,11 @@ public class BulletinBoard extends JFrame {
         String command = ("POST " + x + " " + y + " " + color + " " + content);
 
         try {
-            java.util.List<String> response = client.sendAndReceive(command);
+            String response = client.sendAndReceive(command);
 
             SwingUtilities.invokeLater(() -> {
-                for (String r : response) displayArea.append(r + "\n");
-                displayArea.append("DEBUG: POST response received, refreshing board...\n");
+                displayArea.append(response + "\n");
             });
-
-            if (!response.isEmpty() && response.get(0).startsWith("ERROR")) {
-                showError(response.get(0));
-            } else {
-                refreshBoard();
-            }
-
         } catch (IOException e) {
             SwingUtilities.invokeLater(() ->
                 JOptionPane.showMessageDialog(this, " - Error communicating with server: " + e.getMessage())
